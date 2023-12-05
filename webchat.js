@@ -251,17 +251,101 @@ newChatWidget.innerHTML = `
 
 document.body.append(newChatWidget);
 
-const existingChatWidget = document.getElementById("MSLiveChatWidget");
+(async function () {
+  // Specifies style options to customize the Web Chat canvas.
+  // Please visit https://microsoft.github.io/BotFramework-WebChat for customization samples.
+  const styleOptions = {
+    // Hide upload button.
+    hideUploadButton: false,
+    autoScrollSnapOnPage: true,
+    botAvatarBackgroundColor: '#FFFFFF',
+    botAvatarImage: 'https://byu-pathway.brightspotcdn.com/42/2e/4d4c7b10498c84233ae51179437c/byu-pw-icon-gold-rgb-1-1.svg',
+    botAvatarInitials: 'PSG',
+  };
 
+  // Specifies the token endpoint URL.
+  // To get this value, visit Copilot Studio > Settings > Channels > Mobile app page.
+  const tokenEndpointURL = new URL('https://20a2c64a8afc44f894889f612ed708.ee.environment.api.powerplatform.com/powervirtualagents/botsbyschema/craab_bot1/directline/token?api-version=2022-03-01-preview');
+
+  // Specifies the language the copilot and Web Chat should display in:
+  // - (Recommended) To match the page language, set it to document.documentElement.lang
+  // - To use current user language, set it to navigator.language with a fallback language
+  // - To use another language, set it to supported Unicode locale
+
+  // Setting page language is highly recommended.
+  // When page language is set, browsers will use native font for the respective language.
+
+  const locale = document.documentElement.lang || 'en'; // Uses language specified in <html> element and fallback to English (United States).
+  // const locale = navigator.language || 'ja-JP'; // Uses user preferred language and fallback to Japanese.
+  // const locale = 'zh-HAnt'; // Always use Chinese (Traditional).
+
+  const apiVersion = tokenEndpointURL.searchParams.get('api-version');
+
+  const [directLineURL, token] = await Promise.all([
+    fetch(new URL(`/powervirtualagents/regionalchannelsettings?api-version=${apiVersion}`, tokenEndpointURL))
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to retrieve regional channel settings.');
+        }
+
+        return response.json();
+      })
+      .then(({ channelUrlsById: { directline } }) => directline),
+    fetch(tokenEndpointURL)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to retrieve Direct Line token.');
+        }
+
+        return response.json();
+      })
+      .then(({ token }) => token)
+  ]);
+
+  // The "token" variable is the credentials for accessing the current conversation.
+  // To maintain conversation across page navigation, save and reuse the token.
+
+  // The token could have access to sensitive information about the user.
+  // It must be treated like user password.
+
+  const directLine = WebChat.createDirectLine({ domain: new URL('v3/directline', directLineURL), token });
+
+  // Sends "startConversation" event when the connection is established.
+
+  const subscription = directLine.connectionStatus$.subscribe({
+    next(value) {
+      if (value === 2) {
+        directLine
+          .postActivity({
+            localTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            locale,
+            name: 'startConversation',
+            type: 'event'
+          })
+          .subscribe();
+
+        // Only send the event once, unsubscribe after the event is sent.
+        subscription.unsubscribe();
+      }
+    }
+  });
+
+  WebChat.renderWebChat({ directLine, locale, styleOptions }, document.getElementById('webchatcanvas'));
+  document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "none";
+})();
 
 const button = document.querySelector('#MSLiveChatWidgetButton');
 const chat = document.querySelector('#MSLiveChatWidgetChat');
 const minimizeButton = document.querySelector('#minimize');
 const closeButton = document.querySelector('#close');
+let isChatOpen = true;
 
 button.addEventListener('click', () => {
   button.classList.toggle('hideButton')
   chat.classList.toggle('showChat')
+  if (!isChatOpen) {
+    isChatOpen = true;
+  }
 })
 
 minimizeButton.addEventListener('click', () => {
@@ -272,49 +356,14 @@ minimizeButton.addEventListener('click', () => {
 closeButton.addEventListener('click', () => {
   button.classList.toggle('hideButton')
   chat.classList.toggle('showChat')
+  isChatOpen = false;
 })
 
 
 
-// Replace 'YOUR_BOT_ID' and 'YOUR_SECRET' with your actual bot ID and secret
-const botId = '54454900-684f-4546-a79a-82f0e0550b6b';
-const directLineSecret = 'bg3nlI1n9ls.AwJdPX7rPbv1KE5XsUs5hxcKFo_LHPbYUMae5rOGjfM';
 
-// Check if the WebChat object is defined
-if (window.WebChat) {
-  // Create a Direct Line connection
-  const directLine = window.WebChat.createDirectLine({ secret: directLineSecret });
 
-  const styleOptions = {
-    // Hide upload button.
-    hideUploadButton: false,
-    autoScrollSnapOnPage: true,
-  };
 
-  // Start the conversation
-  directLine.postActivity({
-      from: { id: 'user1' },
-      name: 'startConversation',
-      type: 'event',
-      value: { trigger: 'automatic' }
-  }).subscribe(
-      id => console.log(`Posted activity`),
-      error => console.log(`Error posting activity ${error}`)
-  );
-
-  // Render the Web Chat
-  window.WebChat.renderWebChat({
-      directLine: directLine,
-      userID: 'user1',
-      botAvatarInitials: 'Bot',
-      userAvatarInitials: 'You',
-      styleOptions
-  }, document.getElementById('webchatcanvas'));
-} else {
-  console.error('Web Chat SDK not loaded');
-}
-
-document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "none";
 
 
 // EVENT LISTENER TO CHECK FOR FEEL FREE TO USE
@@ -364,7 +413,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (latestNode && containsDesiredContent(latestNode)) {
           const loginButton = latestNode.querySelector('button');
           if (loginButton.getAttribute('title') === 'Log in') {
-            console.log(loginButton)
             loginButton.addEventListener('click', () => {
               document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "flex";
           })
@@ -470,5 +518,3 @@ document.addEventListener('DOMContentLoaded', function () {
     return pElement;
   }
 });
-
-
