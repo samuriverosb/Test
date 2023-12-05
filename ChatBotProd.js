@@ -228,12 +228,15 @@ newChatWidget.innerHTML = `
   <div class="chat-root-react" id="chatRootReact" dir="ltr"
     style="display: block; position: fixed; bottom: 30px; right: 30px;">
     <div id="chat" style="position: relative;">
+      <div id="minimize"
+        style="color: white; position: absolute; top: 0px; right: 40px; z-index: 999; cursor: pointer; font-weight: bolder; font-size: 1.5rem; font-family: Segoe UI;">
+        _</div>
       <div id="close"
         style="color: white; position: absolute; top: 0px; right: 15px; z-index: 999; cursor: pointer; font-weight: lighter; font-size: 1.7rem; font-family: Segoe UI;">
         x</div>
       <div id="chatPlaceholderWrapper">
         <article class="web-chat oclcw-actionBar-active-header-active" id="web-chat-root">
-          <div id="heading" class="minimize" style="cursor: pointer;">
+          <div id="heading">
             <!-- Change the h1 text to change the bot name -->    
             <h1>BYU-Pathway Student Guide</h1>
           </div>
@@ -253,7 +256,7 @@ const existingChatWidget = document.getElementById("MSLiveChatWidget");
 
 const button = document.querySelector('#MSLiveChatWidgetButton');
 const chat = document.querySelector('#MSLiveChatWidgetChat');
-const minimizeButton = document.querySelector('.minimize');
+const minimizeButton = document.querySelector('#minimize');
 const closeButton = document.querySelector('#close');
 
 button.addEventListener('click', () => {
@@ -282,6 +285,12 @@ if (window.WebChat) {
   // Create a Direct Line connection
   const directLine = window.WebChat.createDirectLine({ secret: directLineSecret });
 
+  const styleOptions = {
+    // Hide upload button.
+    hideUploadButton: false,
+    autoScrollSnapOnPage: true,
+  };
+
   // Start the conversation
   directLine.postActivity({
       from: { id: 'user1' },
@@ -299,6 +308,7 @@ if (window.WebChat) {
       userID: 'user1',
       botAvatarInitials: 'Bot',
       userAvatarInitials: 'You',
+      styleOptions
   }, document.getElementById('webchatcanvas'));
 } else {
   console.error('Web Chat SDK not loaded');
@@ -316,7 +326,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const latestNode = mutation.target.lastElementChild;
         if (latestNode && containsDesiredContent(latestNode)) {
           document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "flex";
-          console.log('FEEL FREE TO USE')
         }
       }
     }
@@ -345,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-// EVENT LISTENER TO CHECK FOR LOGIN
+// EVENT LISTENER TO CHECK FOR USER TO CLICK LOG IN
 document.addEventListener('DOMContentLoaded', function () {
   // Function to log the latest node with the desired content
   function logLatestNode(mutationsList, observer) {
@@ -353,7 +362,14 @@ document.addEventListener('DOMContentLoaded', function () {
       if (mutation.type === 'childList') {
         const latestNode = mutation.target.lastElementChild;
         if (latestNode && containsDesiredContent(latestNode)) {
-          document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "flex";
+          const loginButton = latestNode.querySelector('button');
+          if (loginButton.getAttribute('title') === 'Log in') {
+            console.log(loginButton)
+            loginButton.addEventListener('click', () => {
+              document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "flex";
+          })
+          }
+          
         }
       }
     }
@@ -376,8 +392,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Helper function to check if a node contains the desired content
   function containsDesiredContent(node) {
-    const pElement = node.querySelector('.webchat__bubble .webchat__bubble__content .webchat__adaptive-card-renderer p');
-    return pElement && pElement.textContent.trim() === 'Log in to use the new and improved chatbot!';
+    const pElement = node.querySelector('button div');
+    return pElement && pElement.textContent.trim() === 'Log in';
   }
 });
 
@@ -391,7 +407,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const latestNode = mutation.target.lastElementChild;
         if (latestNode && containsDesiredContent(latestNode)) {
           document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "flex";
-          console.log('FEEL FREE TO USE')
         }
       }
     }
@@ -428,8 +443,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (mutation.type === 'childList') {
         const latestNode = mutation.target.lastElementChild;
         if (latestNode && containsDesiredContent(latestNode) && latestNode.parentNode.tagName !== 'DIV') {
-          console.log('USER INPUT');
-          console.log(latestNode.parentNode.tagName);
           document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "none";
         }
       }
@@ -457,3 +470,5 @@ document.addEventListener('DOMContentLoaded', function () {
     return pElement;
   }
 });
+
+
