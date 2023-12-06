@@ -142,6 +142,7 @@ newChatWidget.innerHTML = `
     height: 500px;
     width: 395px;
     box-shadow: 0px 0px 5px black;
+    background-color: grey;
   }
 
   h1 {
@@ -249,7 +250,85 @@ newChatWidget.innerHTML = `
 </div>
 `;
 
+const closeAlertDiv = document.createElement('div');
+closeAlertDiv.setAttribute('id', 'closeAlert');
+closeAlertDiv.setAttribute('class', 'hiddenAlert');
+closeAlertDiv.innerHTML = `
+<style>
+#closeAlert {
+  border: 3px solid #065577;
+  text-align: center;
+  width: 80%;
+  padding: 0 1rem 1.5rem 1rem;
+  font-family: Calibri, "Helvetica Neue", Arial, "sans-serif";
+  margin: auto;
+  margin-top: 7rem;
+  box-shadow: 0px 0px 5px black;
+  background-color: white;
+  border-radius: 5px;
+}
+
+.hiddenAlert {
+  display: none;
+}
+
+.hiddenChat {
+  display: none;
+}
+
+.alertText1 {
+  margin-bottom: 0;
+}
+
+.alertText2 {
+  margin-top: .5rem;
+}
+
+#confirmClose {
+  background-color: #0063b1;
+  border: 0;
+  color: white;
+  font-size: 1rem;
+  padding: .7rem .5rem;
+  border-radius: 5px;
+  margin-right: 1rem;
+  cursor: pointer;
+}
+
+#confirmClose:hover {
+  background-color: #0082e8;
+  border-color: #03599d;
+ }
+
+#cancelClose {
+  margin-left: 1rem;
+  background-color: #c6c6c6;
+  border: 0;
+  font-size: 1rem;
+  padding: .7rem .5rem;
+  border-radius: 5px;
+  margin-right: 1rem;
+  cursor: pointer;
+}
+
+#cancelClose:hover {
+  background-color: #e4e4e4;
+}
+</style>
+
+<div class="alertText">
+  <p class="alertText1">Are you sure you want to close the current chat?</p>
+  <p class="alertText2">The chat history will be lost.</p>
+</div>
+<div class="alertButtons">
+  <button id="confirmClose" onclick="confirmCloseFunction()">Yes, close</button>
+  <button id="cancelClose" onclick="cancelCloseFunction()">Cancel</button>
+</div>
+`;
+
+
 document.body.append(newChatWidget);
+document.querySelector('.web-chat').append(closeAlertDiv);
 
 (async function () {
   // Specifies style options to customize the Web Chat canvas.
@@ -338,6 +417,8 @@ const button = document.querySelector('#MSLiveChatWidgetButton');
 const chat = document.querySelector('#MSLiveChatWidgetChat');
 const minimizeButton = document.querySelector('#minimize');
 const closeButton = document.querySelector('#close');
+const confirmClose = document.querySelector('#confirmClose');
+const cancelClose = document.querySelector('#cancelClose');
 let isChatOpen = true;
 
 button.addEventListener('click', () => {
@@ -345,6 +426,7 @@ button.addEventListener('click', () => {
   chat.classList.toggle('showChat')
   if (!isChatOpen) {
     isChatOpen = true;
+    initializeChat();
   }
 })
 
@@ -354,15 +436,113 @@ minimizeButton.addEventListener('click', () => {
 })
 
 closeButton.addEventListener('click', () => {
-  button.classList.toggle('hideButton')
-  chat.classList.toggle('showChat')
-  isChatOpen = false;
+  closeAlertDiv.classList.toggle('hiddenAlert')
+  document.getElementById('webchatcanvas').classList.toggle('hiddenChat')
 })
 
+const confirmCloseFunction = () => {
+  button.classList.toggle('hideButton')
+  chat.classList.toggle('showChat')
+  closeAlertDiv.classList.toggle('hiddenAlert')
+  document.getElementById('webchatcanvas').classList.toggle('hiddenChat')
+  isChatOpen = false;
+}
+
+const cancelCloseFunction = () => {
+  closeAlertDiv.classList.toggle('hiddenAlert')
+  document.getElementById('webchatcanvas').classList.toggle('hiddenChat')
+}
 
 
+async function initializeChat() {
+  const transcriptElement = document.querySelector('.webchat__basic-transcript__transcript');
 
+  // Check if the element is found before attempting to clear its content
+  if (transcriptElement) {
+    transcriptElement.innerHTML = ''; // Clear the content
+  } else {
+    console.error('Element not found');
+  }
 
+  const styleOptions = {
+    // Hide upload button.
+    hideUploadButton: false,
+    autoScrollSnapOnPage: true,
+    botAvatarBackgroundColor: '#FFFFFF',
+    botAvatarImage: 'https://byu-pathway.brightspotcdn.com/42/2e/4d4c7b10498c84233ae51179437c/byu-pw-icon-gold-rgb-1-1.svg',
+    botAvatarInitials: 'PSG',
+  };
+
+  // Specifies the token endpoint URL.
+  // To get this value, visit Copilot Studio > Settings > Channels > Mobile app page.
+  const tokenEndpointURL = new URL('https://20a2c64a8afc44f894889f612ed708.ee.environment.api.powerplatform.com/powervirtualagents/botsbyschema/craab_bot1/directline/token?api-version=2022-03-01-preview');
+
+  // Specifies the language the copilot and Web Chat should display in:
+  // - (Recommended) To match the page language, set it to document.documentElement.lang
+  // - To use current user language, set it to navigator.language with a fallback language
+  // - To use another language, set it to supported Unicode locale
+
+  // Setting page language is highly recommended.
+  // When page language is set, browsers will use native font for the respective language.
+
+  const locale = document.documentElement.lang || 'en'; // Uses language specified in <html> element and fallback to English (United States).
+  // const locale = navigator.language || 'ja-JP'; // Uses user preferred language and fallback to Japanese.
+  // const locale = 'zh-HAnt'; // Always use Chinese (Traditional).
+
+  const apiVersion = tokenEndpointURL.searchParams.get('api-version');
+
+  const [directLineURL, token] = await Promise.all([
+    fetch(new URL(`/powervirtualagents/regionalchannelsettings?api-version=${apiVersion}`, tokenEndpointURL))
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to retrieve regional channel settings.');
+        }
+
+        return response.json();
+      })
+      .then(({ channelUrlsById: { directline } }) => directline),
+    fetch(tokenEndpointURL)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to retrieve Direct Line token.');
+        }
+
+        return response.json();
+      })
+      .then(({ token }) => token)
+  ]);
+
+  // The "token" variable is the credentials for accessing the current conversation.
+  // To maintain conversation across page navigation, save and reuse the token.
+
+  // The token could have access to sensitive information about the user.
+  // It must be treated like user password.
+
+  const directLine = WebChat.createDirectLine({ domain: new URL('v3/directline', directLineURL), token });
+
+  // Sends "startConversation" event when the connection is established.
+
+  const subscription = directLine.connectionStatus$.subscribe({
+    next(value) {
+      if (value === 2) {
+        directLine
+          .postActivity({
+            localTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            locale,
+            name: 'startConversation',
+            type: 'event'
+          })
+          .subscribe();
+
+        // Only send the event once, unsubscribe after the event is sent.
+        subscription.unsubscribe();
+      }
+    }
+  });
+
+  WebChat.renderWebChat({ directLine, locale, styleOptions }, document.getElementById('webchatcanvas'));
+  document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "none";
+}
 
 
 
