@@ -518,3 +518,40 @@ document.addEventListener('DOMContentLoaded', function () {
     return pElement;
   }
 });
+
+
+// EVENT LISTENER TO CHECK FOR OTHER TYPING INSTANCES
+document.addEventListener('DOMContentLoaded', function () {
+  // Function to log the latest node with the desired content
+  function logLatestNode(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'childList') {
+        const latestNode = mutation.target.lastElementChild;
+        if (latestNode && containsDesiredContent(latestNode)) {
+          document.querySelector('.webchat__send-box .webchat__send-box__main').style.display = "flex";
+        }
+      }
+    }
+  }
+
+  // Options for the Mutation Observer
+  const options = {
+    childList: true,
+    subtree: true,
+  };
+
+  // Create a Mutation Observer
+  const observer = new MutationObserver(logLatestNode);
+
+  // Target the div with the id "webchatcanvas"
+  const webchatcanvasElement = document.getElementById('webchatcanvas');
+
+  // Observe changes in the div
+  observer.observe(webchatcanvasElement, options);
+
+  // Helper function to check if a node contains the desired content
+  function containsDesiredContent(node) {
+    const pElement = node.querySelector('.webchat__basic-transcript__activity-body .webchat__stacked-layout__content .webchat__stacked-layout__message-row .webchat__stacked-layout__message .webchat__bubble__content div p');
+    return pElement && (pElement.textContent.trim().startsWith('Please describe your') || pElement.textContent.trim().startsWith('We are sorry to hear that. Please describe your') || pElement.textContent.trim().startsWith('From the table above, what is the') || pElement.textContent.trim().startsWith('Please add your comments here:') || pElement.textContent.trim().startsWith('Why would you like to reopen this ticket?') || pElement.textContent.trim().startsWith('Please describe the issue you would like to report.') || pElement.textContent.trim().startsWith('Please enter your') || pElement.textContent.trim().startsWith('Please enter the number') || pElement.textContent.trim().startsWith('Go ahead.'));
+  }
+});
